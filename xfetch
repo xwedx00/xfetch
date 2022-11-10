@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+source /etc/os-release
+
+# Setting Variables.
+
+user_hostname="$(whoami)@$(cat /etc/hostname)"
+user_shell=$(echo $SHELL | cut -c 6- )
+disk_usage=$(df -h | awk '$NF=="/"{printf "%d/%dGB (%s)\n", $3,$2,$5}')
+ram_usage=$(free -h | awk 'NR==2{printf "%s/%s\n", $3,$2}')
+feature_color='\033[1;94m'
+value_color='\033[1;97m'
+
+# Checking For Package Manager.
+
+if [[ -x "$(command -v apk)" ]]; then
+  ((packages = packages + $(apk list --installed | wc -l)))
+elif [[ -x "$(command -v apt)" ]]; then
+  ((packages = packages + $(dpkg --get-selections | wc --lines)))
+elif [[ -x "$(command -v dnf)" ]]; then
+  ((packages = packages + $(dnf list --installed | grep -c -v '^Installed Packages$')))
+elif [[ -x "$(command -v pacman)" ]]; then
+  ((packages = packages + $(pacman -Q | wc -l)))
+elif [[ -x "$(command -v zypper)" ]]; then
+  ((packages = packages + $(zypper search -i | wc -l)))
+elif [[ -x "$(command -v emerge)" ]]; then
+  ((packages = packages + $(q qlist -I | wc -l)))
+elif [[ -x "$(command -v nix-store)" ]]; then
+  ((packages = packages + $(nix-store -q --references /var/run/current-system/sw | cut -d'-' -f2- | wc -l)))
+elif [[ -x "$(command -v xbps-query)" ]]; then
+  ((packages = packages + $(xbps-query -l | awk '{ print $2 }' | xargs -n1 xbps-uhelper getpkgname | wc -l)))
+else
+  echo "Unknown"
+  exit 1
+fi
+
+# Retrieving Host Hardware Info.
+
+read -r version 2>/dev/null </sys/devices/virtual/dmi/id/product_version
+read -r name 2>/dev/null </sys/devices/virtual/dmi/id/product_name
+read -r mobovendor 2>/dev/null </sys/devices/virtual/dmi/id/board_vendor
+read -r mobo 2>/dev/null </sys/devices/virtual/dmi/id/board_name
+host="$mobovendor $name $version $mobo"
+host=${host//To be filled by O.E.M./}
+host=${host//To Be Filled*/}
+host=${host//OEM*/}
+host=${host//Not Applicable/}
+host=${host//System Product Name/}
+host=${host//System Version/}
+host=${host//Undefined/}
+host=${host//Default string/}
+host=${host//Not Specified/}
+host=${host//Type1ProductConfigId/}
+host=${host//INVALID/}
+host=${host//All Series/}
+
+# Retrieving GPU Info.
+
+if [[ $(lspci) ]]; then
+  gpu=$(lspci | grep "VGA\|3D" | cut -d ":" -f3)
+else
+  gpu="Unknown"
+fi
+
+# Retrieving CPU Info.
+
+cpu_model=$(cat /proc/cpuinfo | grep 'model name' | uniq | cut -c 14-)
+if [ "$cpu_model" == "" ]; then
+  cpu_model="Unknown"
+fi
+
+# ASCII Art.
+FILE=x00.txt
+if [ -f "$FILE" ]; then
+    echo -e "$(<x00.txt)"
+    echo
+else 
+    echo 
+fi
+
+# Printing All the Features.
+
+echo -e ${feature_color}Distro${value_color} - $PRETTY_NAME
+echo -e ${feature_color}User${value_color} - $user_hostname
+echo "-"
+echo -e ${feature_color}Kernel${value_color} - $(uname -r)
+echo -e ${feature_color}Shell${value_color} - $user_shell
+echo -e ${feature_color}Packages${value_color} - $packages
+echo -e ${feature_color}Archihecture${value_color} - $(uname -m)
+echo "-"
+echo -e ${feature_color}CPU${value_color} - $cpu_model
+echo -e ${feature_color}RAM Usage${value_color} - $ram_usage
+echo -e ${feature_color}Disk Usage${value_color} - $disk_usage
+echo -e ${feature_color}Host${value_color} - $host
+echo -e ${feature_color}GPU${value_color} - $gpu
+echo
