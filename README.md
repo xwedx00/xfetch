@@ -7,7 +7,8 @@ Doesn't require things like make, clone the repository and run.
 git clone https://github.com/xwedx00/xfetch
 cd xfetch/
 chmod +x ./xfetch
-./xfetch
+clear
+bash xfetch
 ```
 # Screenshot For Reference
 ![kali](https://user-images.githubusercontent.com/117844799/201059854-715ad09e-20fb-4489-89b8-d7742a22e94d.png)
