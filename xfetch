@@ -5,10 +5,26 @@ source /etc/os-release
 
 user_hostname="$(whoami)@$(cat /etc/hostname)"
 user_shell=$(echo $SHELL | cut -c 6- )
-disk_usage=$(df -h 2>/dev/null | awk '$NF=="/"{printf "%d/%dGB (%s)\n", $3,$2,$5}')
-ram_usage=$(free -h | awk 'NR==2{printf "%s/%s\n", $3,$2}')
+disk_usage=$(df -h 2>/dev/null | awk '$NF=="/"{printf "%d/%dGB (%s)\n", \$3,\$2,\$5}')
+ram_usage=$(free -h | awk 'NR==2{printf "%s/%s\n", \$3,\$2}')
 feature_color='\033[1;94m'
 value_color='\033[1;97m'
+
+# Function to retrieve public IP address using an API.
+
+get_public_ip() {
+  public_ip=$(curl -s https://api.ipify.org)
+  echo -e ${feature_color}Public IP Address${value_color} - $public_ip
+}
+
+# Function to retrieve location information using an API.
+
+get_location() {
+  location=$(curl -s https://api.ipgeolocation.io/ipgeo?apiKey=YOUR_API_KEY)
+  country=$(echo $location | jq -r '.country_name')
+  city=$(echo $location | jq -r '.city')
+  echo -e ${feature_color}Location${value_color} - $city, $country
+}
 
 # Checking For Package Manager.
 
@@ -27,7 +43,7 @@ elif [[ -x "$(command -v emerge)" ]]; then
 elif [[ -x "$(command -v nix-store)" ]]; then
   ((packages = packages + $(nix-store -q --references /var/run/current-system/sw | cut -d'-' -f2- | wc -l)))
 elif [[ -x "$(command -v xbps-query)" ]]; then
-  ((packages = packages + $(xbps-query -l | awk '{ print $2 }' | xargs -n1 xbps-uhelper getpkgname | wc -l)))
+  ((packages = packages + $(xbps-query -l | awk '{ print \$2 }' | xargs -n1 xbps-uhelper getpkgname | wc -l)))
 else
   echo "Unknown"
   exit 1
